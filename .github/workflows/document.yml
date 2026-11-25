@@ -1,0 +1,84 @@
+name: Generate Project Documentation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  generate-documentation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate documentation
+        run: |
+          REPO_NAME=$(basename -s .git "$(git config --get remote.origin.url)")
+          BRANCH=$(git branch --show-current)
+          LATEST_COMMIT=$(git log -1 --pretty=format:"%h - %s")
+          TOTAL_COMMITS=$(git rev-list --count HEAD)
+
+          cat > PROJECT_DOCUMENTATION.md << EOF
+          # Project Documentation
+
+          ## Project Information
+
+          **Repository:** $REPO_NAME
+
+          **Current Branch:** $BRANCH
+
+          **Total Commits:** $TOTAL_COMMITS
+
+          **Latest Commit:** $LATEST_COMMIT
+
+          ## Commit History
+
+          $(git log --pretty=format:"- %h | %ad | %an | %s" --date=short)
+
+          ## Contributors
+
+          $(git log --format='%an' | sort -u | sed 's/^/- /')
+
+          ## Repository Statistics
+
+          - Total Commits: $TOTAL_COMMITS
+          - Current Branch: $BRANCH
+          - Latest Commit: $LATEST_COMMIT
+
+          ## Workflow Summary
+
+          This documentation is automatically generated using Git history
+          through GitHub Actions.
+
+          The workflow runs whenever changes are pushed to the main branch
+          or a pull request targets the main branch.
+
+          ## Conclusion
+
+          The project demonstrates automated documentation generation
+          using Git, Markdown and GitHub Actions.
+          EOF
+
+      - name: Commit documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add PROJECT_DOCUMENTATION.md
+
+          if git diff --cached --quiet; then
+            echo "No documentation changes detected."
+          else
+            git commit -m "Update project documentation"
+            git push origin HEAD:main
+          fi
